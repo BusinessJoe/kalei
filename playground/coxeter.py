@@ -1,4 +1,5 @@
 import sympy as sp
+from dataclasses import dataclass
 
 
 def sixteen_cell():
@@ -26,18 +27,26 @@ def cube():
     return matrix
 
 
+def triangle():
+    matrix = sp.Matrix([
+        [1, 3],
+        [3, 1],
+    ])
+    return matrix
+
+
 def reflect(d, n):
     return d - 2 * d.dot(n) * n
 
 
 def reflection_matrix(n):
-    x = reflect(sp.Matrix([1, 0, 0]), n)
-    y = reflect(sp.Matrix([0, 1, 0]), n)
-    z = reflect(sp.Matrix([0, 0, 1]), n)
-    return x.row_join(y).row_join(z)
+    eye = sp.eye(N)
+    return sp.Matrix.hstack(
+        *[reflect(eye.col(i), n) for i in range(N)]
+    )
 
 
-matrix = cube()
+matrix = sixteen_cell()
 N = sp.shape(matrix)[0]
 
 print(N, matrix)
@@ -91,19 +100,40 @@ for g in gens:
     print(g)
 
 
-# class GroupElement:
-#     sequence: list[int]
-#     matrix: sp.Matrix
+class GroupElement:
+    sequence: list[int]
+    matrix: sp.ImmutableMatrix
 
-#     def __init__(self, sequence: list[int], matrix: sp.Matrix):
-#         self.sequence = sequence
-#         self.matrix = matrix
+    def __init__(self, sequence, matrix):
+        self.sequence = sequence
+        self.matrix = matrix
+
+    def __eq__(self, o):
+        return self.matrix == o.matrix
+
+    def __hash__(self):
+        return hash(self.matrix)
 
 
-# elements = []
-# queue = [
-#     GroupElement([], sp.eye(N))
-# ]
+elements = []
 
-# while queue:
+queue = [
+    GroupElement([], sp.ImmutableMatrix(sp.eye(N)))
+]
+seen = set(queue)
 
+while queue:
+    ele = queue.pop(0)
+
+    elements.append(ele)
+
+    for i, g in enumerate(gens):
+        sequence = ele.sequence + [i]
+        matrix = g * ele.matrix
+        new_ele = GroupElement(sequence, matrix)
+
+        if new_ele not in seen:
+            queue.append(new_ele)
+            seen.add(new_ele)
+
+print(len(elements))
