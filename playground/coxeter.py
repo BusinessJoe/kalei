@@ -35,6 +35,17 @@ def triangle():
     return matrix
 
 
+def five_cube():
+    matrix = sp.Matrix([
+        [1, 4, 2, 2, 2],
+        [4, 1, 3, 2, 2],
+        [2, 3, 1, 3, 2],
+        [2, 2, 3, 1, 3],
+        [2, 2, 2, 3, 1],
+    ])
+    return matrix
+
+
 def reflect(d, n):
     return d - 2 * d.dot(n) * n
 
@@ -46,11 +57,14 @@ def reflection_matrix(n):
     )
 
 
-matrix = sixteen_cell()
+# ==== Initial Coxeter matrix ====
+matrix = five_cube()
 N = sp.shape(matrix)[0]
 
 print(N, matrix)
 
+
+# ==== Generate normal vectors ====
 normals = sp.zeros(1, N)
 normals[0] = 1
 
@@ -78,6 +92,7 @@ for i in range(1, N):
     normals = normals.row_insert(row_idx, new_normal)
 
 
+# ==== Ocular validation of normal vectors ====
 for i in range(N):
     for j in range(i, N):
         norm_i = normals[i, :]
@@ -91,6 +106,7 @@ for i in range(N):
         print((i, j), coxeter_number, matrix[i, j])
 print("normals:", normals)
 
+# ==== Generators of Coxeter group (as matrices) ====
 gens = []
 for i in range(N):
     n = normals.row(i).T
@@ -115,6 +131,7 @@ class GroupElement:
         return hash(self.matrix)
 
 
+# ==== Get all elements of Coxeter group ====
 elements = []
 
 queue = [
@@ -136,4 +153,5 @@ while queue:
             queue.append(new_ele)
             seen.add(new_ele)
 
+# Check order
 print(len(elements))
