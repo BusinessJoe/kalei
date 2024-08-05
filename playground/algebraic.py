@@ -63,23 +63,18 @@ def find_root_intervals_recursive(
     upper: Fraction,
     level: int,
 ) -> list[Interval]:
-    print(f"Level {level}, interval {float(lower)} to {float(upper)}")
-
+    """Implementation of Uspensky's algorithm"""
     v = var(p.coefs)
     if v == 0:
         # No roots contained in the [lower, upper] interval
-        print("No roots contained in interval")
         return []
     if v == 1:
         # Exactly 1 root contained in the [lower, upper] interval
-        print("1 root contained in interval")
         if level == 1:
-            print("done branch")
             return [(lower, upper)]
-        print("searching further")
 
     if level == 1:
-        print(":(")
+        raise RuntimeError("More levels required")
 
     intervals: list[Interval] = []
 
@@ -121,88 +116,41 @@ def find_root_intervals_recursive(
     return intervals
 
 
-def uspensky_positive(p: Polynomial, max_depth: int) -> list[Interval]:
-    """Implementation of Uspensky's algorithm
+def find_root_intervals(p: Polynomial, level: int) -> list[Interval]:
+    intervals = []
 
-    TODO: add citations
-    """
-    intervals: list[Interval] = []
-    queue = deque(
-        [
-            (
-                p,
-                Fraction(0),
-                cauchy_upper_bound(p),
-                0,
-            )
-        ]
-    )
+    # Copy so we can be destructive
+    p = Polynomial(p.coefs.copy())
 
-    while len(queue) > 0:
-        print("\n== Iteration ==")
-        p, lower, upper, depth = queue.pop()
-        print(f"= Depth {depth} =")
-        print(f"Checking for root between {float(lower)} and {float(upper)}")
-        print(p.coefs)
-        print(intervals)
+    # Eliminate trivial zeroes
+    has_zero_root = False
+    while p.coefs[0] == 0:
+        has_zero_root = True
+        p.coefs.pop(0)
 
-        # Test p
-        v = var(p.coefs)
-        if v == 0:
-            # No roots contained in the [lower, upper] interval
-            print("No roots contained in interval")
-            continue
-        if v == 1:
-            # Exactly 1 root contained in the [lower, upper] interval
-            print("1 root contained in interval")
-            if depth == max_depth:
-                intervals.append((lower, upper))
-                print("terminating branch")
-                continue
-            print("searching further")
+    if has_zero_root:
+        intervals.append((Fraction(0), Fraction(0)))
 
-        if depth == max_depth:
-            print("D:")
-            continue
+    upper = cauchy_upper_bound(p)
+    intervals += find_root_intervals_recursive(p, Fraction(0), upper, level)
 
-        # Otherwise we transform the polynomial and try again
-        # Sub x + 1
-        coefs_a = []
-        for i in range(len(p.coefs)):
-            coef = Fraction(0)
-            for j in range(i, len(p.coefs)):
-                coef += Fraction(math.comb(j, i)) * p.coefs[j]
-            coefs_a.append(coef)
-        a = Polynomial(coefs_a)
-        if coefs_a[0] == 0:
-            intervals.append((lower + 1, lower + 1))
+    for i in range(len(p.coefs)):
+        if i % 2 == 1:
+            p.coefs[i] *= -1
 
-        # Sub 1 / (x + 1)
-        coefs_b = []
-        for i in range(len(p.coefs)):
-            coef = Fraction(0)
-            for j in range(i, len(p.coefs)):
-                coef += Fraction(math.comb(j, i)) * p.coefs[len(p.coefs) - 1 - j]
-            coefs_b.append(coef)
-        b = Polynomial(coefs_b)
-
-        lower_b = 1 / (lower + 1)
-        upper_b = 1 / (upper + 1)
-        print("bounds for b:", lower_b, upper_b)
-
-        queue.append((b, lower_b, upper_b, depth + 1))
-        queue.append((a, lower + 1, upper + 1, depth + 1))
+    for interval in find_root_intervals_recursive(p, Fraction(0), upper, level):
+        intervals.append((-interval[1], -interval[0]))
 
     return intervals
 
 
 p = Polynomial([Fraction(1), Fraction(0), Fraction(-3), Fraction(1)])
+# p = Polynomial([Fraction(-2), Fraction(0), Fraction(1)])
 
 
 level = int(sys.argv[1])
-for interval in find_root_intervals_recursive(
-    p, Fraction(0), cauchy_upper_bound(p), level
-):
+for interval in find_root_intervals(p, level):
     print()
     avg = interval[0] / 2 + interval[1] / 2
     print(f"avg: {avg.numerator / avg.denominator}")
+    print(f"exact: {avg}")
