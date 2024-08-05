@@ -1,7 +1,7 @@
 import math
+import sys
 from collections import deque
 from fractions import Fraction
-import sys
 
 
 class Polynomial:
@@ -55,6 +55,70 @@ Interval = tuple[Fraction, Fraction]
 
 def cauchy_upper_bound(p: Polynomial) -> Fraction:
     return 1 + max([abs(c) for c in p.coefs[:-1]]) / abs(p.coefs[-1])
+
+
+def find_root_intervals_recursive(
+    p: Polynomial,
+    lower: Fraction,
+    upper: Fraction,
+    level: int,
+) -> list[Interval]:
+    print(f"Level {level}, interval {float(lower)} to {float(upper)}")
+
+    v = var(p.coefs)
+    if v == 0:
+        # No roots contained in the [lower, upper] interval
+        print("No roots contained in interval")
+        return []
+    if v == 1:
+        # Exactly 1 root contained in the [lower, upper] interval
+        print("1 root contained in interval")
+        if level == 1:
+            print("done branch")
+            return [(lower, upper)]
+        print("searching further")
+
+    if level == 1:
+        print(":(")
+
+    intervals: list[Interval] = []
+
+    # Otherwise we transform the polynomial and try again
+    # Sub x + 1
+    coefs_a = []
+    for i in range(len(p.coefs)):
+        coef = Fraction(0)
+        for j in range(i, len(p.coefs)):
+            coef += Fraction(math.comb(j, i)) * p.coefs[j]
+        coefs_a.append(coef)
+    a = Polynomial(coefs_a)
+    if coefs_a[0] == 0:
+        intervals.append((lower + 1, lower + 1))
+
+    for transformed_interval in find_root_intervals_recursive(
+        a, lower, upper, level - 1
+    ):
+        l, u = transformed_interval
+        interval = l + 1, u + 1
+        intervals.append(interval)
+
+    # Sub 1 / (x + 1)
+    coefs_b = []
+    for i in range(len(p.coefs)):
+        coef = Fraction(0)
+        for j in range(i, len(p.coefs)):
+            coef += Fraction(math.comb(j, i)) * p.coefs[len(p.coefs) - 1 - j]
+        coefs_b.append(coef)
+    b = Polynomial(coefs_b)
+
+    for transformed_interval in find_root_intervals_recursive(
+        b, lower, upper, level - 1
+    ):
+        l, u = transformed_interval
+        interval = 1 / (u + 1), 1 / (l + 1)
+        intervals.append(interval)
+
+    return intervals
 
 
 def uspensky_positive(p: Polynomial, max_depth: int) -> list[Interval]:
@@ -122,8 +186,8 @@ def uspensky_positive(p: Polynomial, max_depth: int) -> list[Interval]:
             coefs_b.append(coef)
         b = Polynomial(coefs_b)
 
-        lower_b = 1 / (upper + 1)
-        upper_b = 1 / (lower + 1)
+        lower_b = 1 / (lower + 1)
+        upper_b = 1 / (upper + 1)
         print("bounds for b:", lower_b, upper_b)
 
         queue.append((b, lower_b, upper_b, depth + 1))
@@ -135,7 +199,10 @@ def uspensky_positive(p: Polynomial, max_depth: int) -> list[Interval]:
 p = Polynomial([Fraction(1), Fraction(0), Fraction(-3), Fraction(1)])
 
 
-for interval in uspensky_positive(p, int(sys.argv[1])):
+level = int(sys.argv[1])
+for interval in find_root_intervals_recursive(
+    p, Fraction(0), cauchy_upper_bound(p), level
+):
     print()
     avg = interval[0] / 2 + interval[1] / 2
     print(f"avg: {avg.numerator / avg.denominator}")
