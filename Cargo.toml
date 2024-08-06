@@ -3,6 +3,9 @@ name = "kalei"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+crate-type = ["cdylib"]
+
 [dependencies]
 num-rational = "0.4.2"
 num-integer = "0.1.46"

@@ -1,10 +1,6 @@
-use num_rational::Rational64;
-
-use crate::poly::Polynomial;
-
+use crate::poly::{Polynomial, RootLocation};
 
 pub struct Algebraic {
     poly: Polynomial,
-    lower: Rational64,
-    upper: Rational64,
+    location: RootLocation,
 }

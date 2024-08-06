@@ -15,6 +15,15 @@ pub enum RootLocation {
     Interval(Rational64, Rational64),
 }
 
+impl RootLocation {
+    pub fn contains(&self, value: Rational64) -> bool {
+        match self {
+            &RootLocation::Exact(x) => value == x,
+            &RootLocation::Interval(l, u) => l < value && value < u,
+        }
+    }
+}
+
 impl Polynomial {
     pub fn new(coefs: &[Rational64]) -> Self {
         Self {
@@ -68,15 +77,20 @@ impl Polynomial {
     }
 
     /// Implemented with Uspensky's algorithm
-    fn find_real_roots_recursive(&self) -> Vec<RootLocation> {
+    fn find_real_roots_recursive(&self, debug: &str) -> Vec<RootLocation> {
+        println!("{debug} {:?}", self);
         let sign_changes = self.count_sign_changes();
         if sign_changes == 0 {
+            println!("No roots");
             return vec![];
         }
         if sign_changes == 1 {
             let upper = self.root_upper_bound();
+            println!("1 root with upper bound {upper}");
             return vec![RootLocation::Interval(0.into(), upper)];
         }
+
+        println!("recursing");
 
         let mut locations = vec![];
 
@@ -85,7 +99,7 @@ impl Polynomial {
             locations.push(RootLocation::Exact(1.into()))
         }
 
-        for transformed_location in a.find_real_roots_recursive() {
+        for transformed_location in a.find_real_roots_recursive(&format!("{debug} x+1")) {
             let location = match transformed_location {
                 RootLocation::Exact(x) => RootLocation::Exact(x + 1),
                 RootLocation::Interval(l, u) => RootLocation::Interval(l + 1, u + 1),
@@ -94,7 +108,7 @@ impl Polynomial {
         }
 
         let b = self.sub_reciprocal();
-        for transformed_location in b.find_real_roots_recursive() {
+        for transformed_location in b.find_real_roots_recursive(&format!("{debug} 1/(x+1)")) {
             let location = match transformed_location {
                 RootLocation::Exact(x) => RootLocation::Exact((x + 1).recip()),
                 RootLocation::Interval(l, u) => {
@@ -121,7 +135,7 @@ impl Polynomial {
     fn root_upper_bound(&self) -> Rational64 {
         let mut bound = Rational64::ZERO;
         for coef in &self.coefs[0..self.coefs.len() - 1] {
-            bound = max(*coef, bound);
+            bound = max(coef.abs(), bound);
         }
         bound /= self.coefs.last().unwrap().abs();
         bound + 1
@@ -141,7 +155,7 @@ impl Polynomial {
             locations.push(RootLocation::Exact(Rational64::ZERO));
         }
 
-        locations.extend_from_slice(&p.find_real_roots_recursive());
+        locations.extend_from_slice(&p.find_real_roots_recursive("pos"));
 
         // Substitute x -> -x
         for (i, coef) in p.coefs.iter_mut().enumerate() {
@@ -151,7 +165,7 @@ impl Polynomial {
         }
 
         locations.extend(
-            p.find_real_roots_recursive()
+            p.find_real_roots_recursive("neg")
                 .into_iter()
                 .map(|loc| match loc {
                     RootLocation::Exact(x) => RootLocation::Exact(-x),
@@ -186,5 +200,45 @@ mod tests {
             Rational64::from_integer(8),
         ]);
         assert_eq!(p.count_sign_changes(), 1);
+    }
+
+    #[test]
+    fn find_root_of_cos_pi_7_min_poly() {
+        let p = Polynomial::new(&[(1).into(), (-4).into(), (-4).into(), (8).into()]);
+
+        let root_locations = p.real_root_locations();
+        assert_eq!(root_locations.len(), 3);
+
+        let mut expected_roots = vec![-0.623, 0.223, 0.901];
+        for loc in &root_locations {
+            let mut root_idx = None;
+            for (i, root) in expected_roots.iter().enumerate() {
+                if loc.contains(Rational64::approximate_float(*root).unwrap()) {
+                    root_idx = Some(i);
+                    break;
+                }
+            }
+
+            if let Some(root_idx) = root_idx {
+                expected_roots.remove(root_idx);
+            } else {
+                panic!("No root found for location {:?}", loc);
+            }
+        }
+    }
+
+    #[test]
+    fn root_upper_bound() {
+        let p = Polynomial::new(&[
+            (-8).into(),
+            (-16).into(),
+            (-6).into(),
+            (1).into(),
+        ]);
+
+        // Roots are about -0.7, -1.4, and 8.1
+        // Therefore the upper bound should be larger than 8.1
+        let bound = p.root_upper_bound();
+        assert!(bound > 8.into(), "bound {} should be larger than {}", bound, 8);
     }
 }
