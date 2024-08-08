@@ -1,5 +1,6 @@
 import sympy as sp
-from dataclasses import dataclass
+from scipy.spatial import ConvexHull
+import matplotlib.pyplot as plt
 
 
 def sixteen_cell():
@@ -58,7 +59,7 @@ def reflection_matrix(n):
 
 
 # ==== Initial Coxeter matrix ====
-matrix = five_cube()
+matrix = sixteen_cell()
 N = sp.shape(matrix)[0]
 
 print(N, matrix)
@@ -155,3 +156,22 @@ while queue:
 
 # Check order
 print(len(elements))
+
+root_point = sp.Matrix([2, 2, 1])
+
+all_points = []
+for ele in elements:
+    point = ele.matrix * root_point
+    all_points.append(point.T)
+
+all_points = sp.Matrix(all_points)
+
+hull = ConvexHull(all_points)
+print(hull.simplices)
+print(hull.simplices.shape)
+
+
+# plottttt
+ax = plt.figure().add_subplot(projection='3d')
+ax.scatter(all_points[:, 0], all_points[:, 1], all_points[:, 2])
+plt.show()

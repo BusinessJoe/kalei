@@ -1,4 +1,4 @@
-use std::cmp::max;
+use std::{cmp::max, fmt::Display};
 
 use num_integer::binomial;
 use num_rational::Rational64;
@@ -6,7 +6,7 @@ use num_traits::Signed;
 
 #[derive(Debug, Clone)]
 pub struct Polynomial {
-    coefs: Vec<Rational64>,
+    pub coefs: Vec<Rational64>,
 }
 
 #[derive(Debug, Clone)]
@@ -24,11 +24,24 @@ impl RootLocation {
     }
 }
 
+impl Display for RootLocation {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RootLocation::Exact(x) => write!(f, "{}", x),
+            RootLocation::Interval(l, u) => write!(f, "({}, {})", l, u),
+        }
+    }
+}
+
 impl Polynomial {
     pub fn new(coefs: &[Rational64]) -> Self {
         Self {
             coefs: coefs.to_vec(),
         }
+    }
+
+    pub fn degree(&self) -> usize {
+        self.coefs.len() - 1
     }
 
     fn count_sign_changes(&self) -> usize {
@@ -78,19 +91,14 @@ impl Polynomial {
 
     /// Implemented with Uspensky's algorithm
     fn find_real_roots_recursive(&self, debug: &str) -> Vec<RootLocation> {
-        println!("{debug} {:?}", self);
         let sign_changes = self.count_sign_changes();
         if sign_changes == 0 {
-            println!("No roots");
             return vec![];
         }
         if sign_changes == 1 {
             let upper = self.root_upper_bound();
-            println!("1 root with upper bound {upper}");
             return vec![RootLocation::Interval(0.into(), upper)];
         }
-
-        println!("recursing");
 
         let mut locations = vec![];
 
@@ -229,16 +237,16 @@ mod tests {
 
     #[test]
     fn root_upper_bound() {
-        let p = Polynomial::new(&[
-            (-8).into(),
-            (-16).into(),
-            (-6).into(),
-            (1).into(),
-        ]);
+        let p = Polynomial::new(&[(-8).into(), (-16).into(), (-6).into(), (1).into()]);
 
         // Roots are about -0.7, -1.4, and 8.1
         // Therefore the upper bound should be larger than 8.1
         let bound = p.root_upper_bound();
-        assert!(bound > 8.into(), "bound {} should be larger than {}", bound, 8);
+        assert!(
+            bound > 8.into(),
+            "bound {} should be larger than {}",
+            bound,
+            8
+        );
     }
 }
