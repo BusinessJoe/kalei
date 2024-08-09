@@ -11,3 +11,4 @@ crate-type = ["lib"]
 num-rational = "0.4.2"
 num-integer = "0.1.46"
 num-traits = "0.2.19"
+itertools = "0.13.0"
